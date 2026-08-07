@@ -302,12 +302,11 @@
   background: var(--background-secondary);
 }
 
-.linkr-settings-hero h2 {
-  margin: 0 0 4px;
+.linkr-settings-hero .setting-item-heading {
+  margin-bottom: 4px;
 }
 
-.linkr-settings-hero p {
-  margin: 0;
+.linkr-settings-hero .setting-item-description {
   color: var(--text-muted);
 }
 

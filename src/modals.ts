@@ -78,8 +78,8 @@ export class FilePickerModal extends SuggestModal<FileSuggestion> {
     ]);
   }
 
-  onOpen(): void {
-    super.onOpen();
+  async onOpen(): Promise<void> {
+    await super.onOpen();
     addPickerChrome(this, 'Choose a file', 'Files');
   }
 
@@ -217,8 +217,8 @@ export class HeadingPickerModal extends FuzzySuggestModal<HeadingChoice> {
     ]);
   }
 
-  onOpen(): void {
-    super.onOpen();
+  async onOpen(): Promise<void> {
+    await super.onOpen();
     addPickerChrome(this, `Choose a heading · ${this.file.basename}`, 'Headings');
   }
 
@@ -269,8 +269,8 @@ export class BlockPickerModal extends FuzzySuggestModal<BlockChoice> {
     ]);
   }
 
-  onOpen(): void {
-    super.onOpen();
+  async onOpen(): Promise<void> {
+    await super.onOpen();
     addPickerChrome(this, `Choose a block · ${this.file.basename}`, 'Blocks');
   }
 
@@ -314,8 +314,8 @@ export class UniversalLinkPickerModal extends FuzzySuggestModal<LinkOption> {
     ]);
   }
 
-  onOpen(): void {
-    super.onOpen();
+  async onOpen(): Promise<void> {
+    await super.onOpen();
     addPickerChrome(this, 'Add universal wiki link', 'Linkr Gen 2');
   }
 

@@ -1,4 +1,9 @@
-import { App, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import {
+  App,
+  Plugin,
+  PluginSettingTab,
+  SettingDefinitionItem,
+} from 'obsidian';
 import type { LinkrSettings } from './types';
 import { LINK_OPTIONS } from './types';
 
@@ -24,130 +29,159 @@ export class LinkrSettingTab extends PluginSettingTab {
     super(app, linkr);
   }
 
-  display(): void {
-    const { containerEl } = this;
-    containerEl.empty();
-    containerEl.addClass('linkr-settings');
+  getSettingDefinitions(): SettingDefinitionItem<keyof LinkrSettings>[] {
+    return [
+      {
+        type: 'group',
+        heading: 'Linkr Gen 2',
+        cls: 'linkr-settings-hero',
+        items: [
+          {
+            name: 'Universal wiki-link workflows',
+            desc: 'Created by @NameIsKyro.',
+            searchable: false,
+          },
+        ],
+      },
+      {
+        type: 'group',
+        heading: 'Named links',
+        items: [
+          {
+            name: 'Blank name fallback',
+            desc: 'What Linkr inserts after the pipe when the name field is blank.',
+            aliases: ['alias', 'display name', 'pipe'],
+            control: {
+              type: 'dropdown',
+              key: 'aliasFallback',
+              defaultValue: DEFAULT_SETTINGS.aliasFallback,
+              options: {
+                destination: 'Heading, block text, or file name',
+                file: 'File name',
+                empty: 'Keep the alias empty',
+              },
+            },
+          },
+        ],
+      },
+      {
+        type: 'group',
+        heading: 'Universal command',
+        items: [
+          {
+            name: 'Preferred link type',
+            desc: 'This option appears first in the universal link picker.',
+            aliases: ['default link type', 'universal picker'],
+            control: {
+              type: 'dropdown',
+              key: 'preferredUniversalOption',
+              defaultValue: DEFAULT_SETTINGS.preferredUniversalOption,
+              options: Object.fromEntries(
+                LINK_OPTIONS.map((option) => [option.id, option.title]),
+              ),
+            },
+          },
+          {
+            name: 'Remember last universal choice',
+            desc: 'Move the most recently used universal link type to the top.',
+            aliases: ['recent link type'],
+            control: {
+              type: 'toggle',
+              key: 'rememberLastUniversalOption',
+              defaultValue: DEFAULT_SETTINGS.rememberLastUniversalOption,
+            },
+          },
+        ],
+      },
+      {
+        type: 'group',
+        heading: 'File picker',
+        items: [
+          {
+            name: 'Recent files at the top',
+            desc: 'Choose how many most-recently selected files are boosted. Set to 0 to disable.',
+            aliases: ['recent files', 'MRU'],
+            control: {
+              type: 'slider',
+              key: 'recentFileLimit',
+              defaultValue: DEFAULT_SETTINGS.recentFileLimit,
+              min: 0,
+              max: 10,
+              step: 1,
+              displayFormat: (value) => String(value),
+            },
+          },
+          {
+            name: 'Show file paths',
+            desc: 'Show each file’s folder below its name in the picker.',
+            aliases: ['folders', 'paths'],
+            control: {
+              type: 'toggle',
+              key: 'showFilePaths',
+              defaultValue: DEFAULT_SETTINGS.showFilePaths,
+            },
+          },
+          {
+            name: 'Clear recent files',
+            desc: 'Forget Linkr’s recent-file ordering without changing any notes.',
+            aliases: ['reset recent files'],
+            action: (el) => {
+              void this.clearRecentFiles(el);
+            },
+          },
+        ],
+      },
+      {
+        type: 'group',
+        heading: 'New notes',
+        items: [
+          {
+            name: 'Create notes from file search',
+            desc: 'When no exact file exists, offer to create a Markdown note using Obsidian’s configured new-note location.',
+            aliases: ['new note', 'create file'],
+            control: {
+              type: 'toggle',
+              key: 'allowCreateNotes',
+              defaultValue: DEFAULT_SETTINGS.allowCreateNotes,
+            },
+          },
+          {
+            name: 'Add a title heading',
+            desc: 'Start Linkr-created notes with an H1 matching the file name.',
+            aliases: ['H1', 'new note title'],
+            control: {
+              type: 'toggle',
+              key: 'addHeadingToNewNotes',
+              defaultValue: DEFAULT_SETTINGS.addHeadingToNewNotes,
+              disabled: () => !this.linkr.settings.allowCreateNotes,
+            },
+          },
+        ],
+      },
+      {
+        type: 'group',
+        cls: 'linkr-settings-footer',
+        items: [
+          {
+            name: 'Linkr 2.0.1',
+            desc: 'Crafted by @NameIsKyro.',
+            searchable: false,
+          },
+        ],
+      },
+    ];
+  }
 
-    const hero = containerEl.createDiv({ cls: 'linkr-settings-hero' });
-    hero.createEl('h2', { text: 'Linkr Gen 2' });
-    hero.createEl('p', {
-      text: 'Universal wiki-link workflows, crafted by @NameIsKyro.',
-    });
+  async setControlValue(key: string, value: unknown): Promise<void> {
+    await super.setControlValue(key, value);
+    if (key === 'allowCreateNotes') {
+      this.refreshDomState();
+    }
+  }
 
-    new Setting(containerEl).setName('Named links').setHeading();
-
-    new Setting(containerEl)
-      .setName('Blank name fallback')
-      .setDesc('What Linkr inserts after the pipe when the name field is blank.')
-      .addDropdown((dropdown) => {
-        dropdown
-          .addOption('destination', 'Heading, block text, or file name')
-          .addOption('file', 'File name')
-          .addOption('empty', 'Keep the alias empty')
-          .setValue(this.linkr.settings.aliasFallback)
-          .onChange(async (value) => {
-            this.linkr.settings.aliasFallback = value as LinkrSettings['aliasFallback'];
-            await this.linkr.saveSettings();
-          });
-      });
-
-    new Setting(containerEl).setName('Universal command').setHeading();
-
-    new Setting(containerEl)
-      .setName('Preferred link type')
-      .setDesc('This option appears first in the universal link picker.')
-      .addDropdown((dropdown) => {
-        for (const option of LINK_OPTIONS) {
-          dropdown.addOption(option.id, option.title);
-        }
-        dropdown
-          .setValue(this.linkr.settings.preferredUniversalOption)
-          .onChange(async (value) => {
-            this.linkr.settings.preferredUniversalOption = value;
-            await this.linkr.saveSettings();
-          });
-      });
-
-    new Setting(containerEl)
-      .setName('Remember last universal choice')
-      .setDesc('Move the most recently used universal link type to the top.')
-      .addToggle((toggle) => {
-        toggle
-          .setValue(this.linkr.settings.rememberLastUniversalOption)
-          .onChange(async (value) => {
-            this.linkr.settings.rememberLastUniversalOption = value;
-            await this.linkr.saveSettings();
-          });
-      });
-
-    new Setting(containerEl).setName('File picker').setHeading();
-
-    new Setting(containerEl)
-      .setName('Recent files at the top')
-      .setDesc('Choose how many most-recently selected files are boosted. Set to 0 to disable.')
-      .addSlider((slider) => {
-        slider
-          .setLimits(0, 10, 1)
-          .setValue(this.linkr.settings.recentFileLimit)
-          .setDynamicTooltip()
-          .onChange(async (value) => {
-            this.linkr.settings.recentFileLimit = value;
-            await this.linkr.saveSettings();
-          });
-      });
-
-    new Setting(containerEl)
-      .setName('Show file paths')
-      .setDesc('Show each file’s folder below its name in the picker.')
-      .addToggle((toggle) => {
-        toggle.setValue(this.linkr.settings.showFilePaths).onChange(async (value) => {
-          this.linkr.settings.showFilePaths = value;
-          await this.linkr.saveSettings();
-        });
-      });
-
-    new Setting(containerEl)
-      .setName('Clear recent files')
-      .setDesc('Forget Linkr’s recent-file ordering without changing any notes.')
-      .addButton((button) => {
-        button.setButtonText('Clear').onClick(async () => {
-          this.linkr.settings.recentFilePaths = [];
-          await this.linkr.saveSettings();
-          button.setButtonText('Cleared');
-        });
-      });
-
-    new Setting(containerEl).setName('New notes').setHeading();
-
-    new Setting(containerEl)
-      .setName('Create notes from file search')
-      .setDesc('When no exact file exists, offer to create a Markdown note using Obsidian’s configured new-note location.')
-      .addToggle((toggle) => {
-        toggle.setValue(this.linkr.settings.allowCreateNotes).onChange(async (value) => {
-          this.linkr.settings.allowCreateNotes = value;
-          await this.linkr.saveSettings();
-          this.display();
-        });
-      });
-
-    new Setting(containerEl)
-      .setName('Add a title heading')
-      .setDesc('Start Linkr-created notes with an H1 matching the file name.')
-      .setDisabled(!this.linkr.settings.allowCreateNotes)
-      .addToggle((toggle) => {
-        toggle
-          .setValue(this.linkr.settings.addHeadingToNewNotes)
-          .setDisabled(!this.linkr.settings.allowCreateNotes)
-          .onChange(async (value) => {
-            this.linkr.settings.addHeadingToNewNotes = value;
-            await this.linkr.saveSettings();
-          });
-      });
-
-    containerEl.createDiv({
-      cls: 'linkr-settings-footer',
-      text: 'Linkr 2.0.0 · @NameIsKyro',
-    });
+  private async clearRecentFiles(el: HTMLElement): Promise<void> {
+    this.linkr.settings.recentFilePaths = [];
+    await this.linkr.saveSettings();
+    el.setText('Cleared');
   }
 }

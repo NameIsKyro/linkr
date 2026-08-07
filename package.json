@@ -1,13 +1,14 @@
 {
   "name": "obsidian-linkr",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Linkr — universal Obsidian wiki links by @NameIsKyro.",
   "main": "main.js",
   "type": "module",
   "scripts": {
     "dev": "node esbuild.config.mjs",
     "build": "tsc --noEmit --skipLibCheck && node esbuild.config.mjs production",
-    "check": "tsc --noEmit --skipLibCheck"
+    "check": "tsc --noEmit --skipLibCheck",
+    "lint": "eslint ."
   },
   "keywords": [
     "obsidian",
@@ -19,9 +20,15 @@
   "author": "@NameIsKyro",
   "license": "MIT",
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@types/node": "^22.15.17",
     "esbuild": "0.25.5",
+    "eslint": "^9.39.5",
+    "eslint-plugin-obsidianmd": "^0.4.1",
+    "globals": "^17.9.0",
+    "jiti": "^2.7.0",
     "obsidian": "latest",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.66.0"
   }
 }

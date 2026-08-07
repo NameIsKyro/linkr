@@ -1,6 +1,6 @@
 # Linkr
 
-**Linkr Gen 2** is a fast, keyboard-first wiki-link workflow for Obsidian, created by **@NameIsKyro**.
+**Linkr Gen 2** is a fast, keyboard-first wiki-link workflow for Obsidian, created by **@NameIsKyro**. Version 2.0.1 requires Obsidian 1.13.0 or later.
 
 Press `Cmd+P` on macOS or `Ctrl+P` on Windows/Linux and choose a direct Linkr command, or open **Linkr: Add universal wiki link…** when you want the plugin to explain every format.
 

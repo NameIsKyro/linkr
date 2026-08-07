@@ -3,7 +3,7 @@ import process from 'process';
 import { builtinModules } from 'node:module';
 
 const banner = `/*
-Linkr 2.0.0
+Linkr 2.0.1
 Created by @NameIsKyro
 Generated bundle — edit the TypeScript source, not this file.
 */`;
