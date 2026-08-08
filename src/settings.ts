@@ -9,6 +9,7 @@ import { LINK_OPTIONS } from './types';
 
 export const DEFAULT_SETTINGS: LinkrSettings = {
   aliasFallback: 'target',
+  copyPasteMode: 'ask',
   enableWikiLink: true,
   enableFileLinkWithText: true,
   enableHeadingLink: false,
@@ -55,7 +56,7 @@ export class LinkrSettingTab extends PluginSettingTab {
         items: LINK_OPTIONS.map((option) => ({
           name: option.title,
           desc: `${option.description} Example: ${option.example}`,
-          aliases: ['link type', 'command', 'universal picker'],
+          aliases: ['link type', 'command', 'link builder'],
           control: {
             type: 'toggle',
             key: option.settingKey,
@@ -88,7 +89,7 @@ export class LinkrSettingTab extends PluginSettingTab {
       },
       {
         type: 'group',
-        heading: 'Universal command',
+        heading: 'Link builder',
         items: [
           {
             name: 'Recommended hotkey',
@@ -98,7 +99,7 @@ export class LinkrSettingTab extends PluginSettingTab {
           {
             name: 'Preferred link type',
             desc: 'This enabled option appears first in the link builder.',
-            aliases: ['default link type', 'universal picker'],
+            aliases: ['default link type', 'link builder'],
             control: {
               type: 'dropdown',
               key: 'preferredUniversalOption',
@@ -116,6 +117,27 @@ export class LinkrSettingTab extends PluginSettingTab {
               type: 'toggle',
               key: 'rememberLastUniversalOption',
               defaultValue: DEFAULT_SETTINGS.rememberLastUniversalOption,
+            },
+          },
+        ],
+      },
+      {
+        type: 'group',
+        heading: 'Copy and paste',
+        items: [
+          {
+            name: 'File explorer link behavior',
+            desc: 'Choose what happens after copying a file or heading link from an Obsidian context menu.',
+            aliases: ['copy file', 'paste link', 'file explorer', 'heading'],
+            control: {
+              type: 'dropdown',
+              key: 'copyPasteMode',
+              defaultValue: DEFAULT_SETTINGS.copyPasteMode,
+              options: {
+                ask: 'Ask when pasting',
+                plain: 'Paste without link text',
+                'file-name': 'Paste with the file name',
+              },
             },
           },
         ],
@@ -190,7 +212,7 @@ export class LinkrSettingTab extends PluginSettingTab {
         cls: 'linkr-settings-footer',
         items: [
           {
-            name: 'Linkr 2.0.2',
+            name: 'Linkr 2.0.3',
             desc: 'Crafted by @NameIsKyro.',
             searchable: false,
           },

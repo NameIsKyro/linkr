@@ -298,6 +298,7 @@
   white-space: nowrap;
 }
 
+.linkr-link-text-setting,
 .linkr-embed-setting {
   margin: 0 20px 16px;
   padding: 12px;
@@ -306,6 +307,7 @@
   background: var(--background-primary-alt);
 }
 
+.linkr-link-text-setting .setting-item-info,
 .linkr-embed-setting .setting-item-info {
   padding-right: 16px;
 }

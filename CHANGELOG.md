@@ -2,6 +2,16 @@
 
 All notable changes to Linkr are recorded here.
 
+## 2.0.3
+
+- Added **Copy file link** to file context menus in Obsidian's File Explorer.
+- Added **Copy heading link…** for choosing and copying a heading from a Markdown file.
+- Added command-palette alternatives for copying the active file or one of its headings.
+- Added an optional paste-time popup with **Use link text** and **Embed content** toggles.
+- Added copy behaviors for asking on paste, pasting without link text, or using the file name automatically.
+- Standardized visible naming around **Link builder**.
+- Removed development dependencies from the delivered folder to keep the download small.
+
 ## 2.0.2
 
 - Added an **Embed content** toggle to the final screen for every link type.

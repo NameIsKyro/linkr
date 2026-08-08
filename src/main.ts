@@ -1,11 +1,13 @@
 import {
   BlockCache,
   Editor,
+  Menu,
   MarkdownFileInfo,
   MarkdownView,
   normalizePath,
   Notice,
   Plugin,
+  TAbstractFile,
   TFile,
 } from 'obsidian';
 import {
@@ -19,8 +21,8 @@ import {
   FilePickerChoice,
   FilePickerModal,
   HeadingPickerModal,
+  LinkBuilderModal,
   LinkOptionsModal,
-  UniversalLinkPickerModal,
 } from './modals';
 import {
   DEFAULT_SETTINGS,
@@ -46,6 +48,12 @@ interface DirectCommand {
   id: string;
   name: string;
   optionId: string;
+}
+
+interface CopiedLinkTarget {
+  filePath: string;
+  heading?: HeadingChoice;
+  clipboardText: string;
 }
 
 const DIRECT_COMMANDS: DirectCommand[] = [
@@ -83,6 +91,7 @@ const DIRECT_COMMANDS: DirectCommand[] = [
 
 export default class LinkrPlugin extends Plugin {
   settings: LinkrSettings = { ...DEFAULT_SETTINGS };
+  private copiedLink: CopiedLinkTarget | null = null;
 
   async onload(): Promise<void> {
     await this.loadSettings();
@@ -104,7 +113,7 @@ export default class LinkrPlugin extends Plugin {
           return;
         }
         const target = this.captureTarget(editor, context.file?.path ?? '');
-        new UniversalLinkPickerModal(
+        new LinkBuilderModal(
           this.app,
           options,
           (option) => {
@@ -114,6 +123,23 @@ export default class LinkrPlugin extends Plugin {
         ).open();
       },
     });
+
+    this.registerCopyCommands();
+    this.registerEvent(
+      this.app.workspace.on('file-menu', (menu, file) => {
+        this.addFileMenuItems(menu, file);
+      }),
+    );
+    this.registerEvent(
+      this.app.workspace.on('editor-paste', (event, editor, context) => {
+        if (event.defaultPrevented) {
+          return;
+        }
+        if (this.handleEditorPaste(event, editor, context)) {
+          event.preventDefault();
+        }
+      }),
+    );
 
     this.addSettingTab(new LinkrSettingTab(this.app, this));
   }
@@ -163,6 +189,151 @@ export default class LinkrPlugin extends Plugin {
         return true;
       },
     });
+  }
+
+  private registerCopyCommands(): void {
+    this.addCommand({
+      id: 'copy-active-file-link',
+      name: 'Copy active file link',
+      checkCallback: (checking) => {
+        const file = this.app.workspace.getActiveFile();
+        if (!(file instanceof TFile)) {
+          return false;
+        }
+        if (!checking) {
+          void this.copyDestination({ file });
+        }
+        return true;
+      },
+    });
+
+    this.addCommand({
+      id: 'copy-heading-link-from-active-file',
+      name: 'Copy heading link from active file…',
+      checkCallback: (checking) => {
+        const file = this.app.workspace.getActiveFile();
+        if (!(file instanceof TFile) || file.extension !== 'md') {
+          return false;
+        }
+        if (!checking) {
+          void this.chooseHeadingToCopy(file);
+        }
+        return true;
+      },
+    });
+  }
+
+  private addFileMenuItems(menu: Menu, file: TAbstractFile): void {
+    if (!(file instanceof TFile)) {
+      return;
+    }
+
+    menu.addItem((item) => {
+      item
+        .setTitle('Copy file link')
+        .setIcon('copy')
+        .setSection('linkr')
+        .onClick(() => {
+          void this.copyDestination({ file });
+        });
+    });
+
+    if (file.extension === 'md') {
+      menu.addItem((item) => {
+        item
+          .setTitle('Copy heading link…')
+          .setIcon('heading')
+          .setSection('linkr')
+          .onClick(() => {
+            void this.chooseHeadingToCopy(file);
+          });
+      });
+    }
+  }
+
+  private async chooseHeadingToCopy(file: TFile): Promise<void> {
+    const headings = await this.getHeadings(file);
+    if (headings.length === 0) {
+      new Notice(`No headings found in “${file.basename}”.`);
+      return;
+    }
+
+    new HeadingPickerModal(this.app, file, headings, (heading) => {
+      void this.copyDestination({ file, heading });
+    }).open();
+  }
+
+  private async copyDestination(destination: DestinationChoice): Promise<void> {
+    const fileLink = this.app.metadataCache.fileToLinktext(
+      destination.file,
+      '',
+      true,
+    );
+    const destinationText = buildDestinationText(fileLink, destination);
+    const useFileName = this.settings.copyPasteMode === 'file-name';
+    const request: LinkRequest = {
+      subpath: destination.heading ? 'heading' : 'file',
+      embed: false,
+      named: useFileName,
+    };
+    const clipboardText = buildWikiLink(
+      destinationText,
+      request,
+      useFileName ? destination.file.basename : null,
+    );
+
+    try {
+      await navigator.clipboard.writeText(clipboardText);
+      this.copiedLink = this.settings.copyPasteMode === 'ask'
+        ? {
+            filePath: destination.file.path,
+            heading: destination.heading,
+            clipboardText,
+          }
+        : null;
+      const targetName = destination.heading
+        ? `heading “${destination.heading.heading}”`
+        : `file “${destination.file.name}”`;
+      const nextStep = this.settings.copyPasteMode === 'ask'
+        ? 'Paste it into a note to choose the final link options.'
+        : 'Paste it into any note.';
+      new Notice(`Copied ${targetName}. ${nextStep}`);
+    } catch (error) {
+      console.error('Linkr could not copy a link', error);
+      new Notice('Could not copy the link to the clipboard.');
+    }
+  }
+
+  private handleEditorPaste(
+    event: ClipboardEvent,
+    editor: Editor,
+    context: MarkdownView | MarkdownFileInfo,
+  ): boolean {
+    if (
+      this.settings.copyPasteMode !== 'ask' ||
+      !this.copiedLink ||
+      event.clipboardData?.getData('text/plain') !== this.copiedLink.clipboardText
+    ) {
+      return false;
+    }
+
+    const file = this.app.vault.getAbstractFileByPath(this.copiedLink.filePath);
+    if (!(file instanceof TFile)) {
+      return false;
+    }
+
+    const destination: DestinationChoice = {
+      file,
+      heading: this.copiedLink.heading,
+    };
+    const target = this.captureTarget(editor, context.file?.path ?? '');
+    const request: LinkRequest = {
+      subpath: destination.heading ? 'heading' : 'file',
+      embed: false,
+      named: true,
+    };
+    this.openLinkOptions(destination, target, request, true);
+    return true;
   }
 
   private captureTarget(editor: Editor, sourcePath: string): InsertionTarget {
@@ -237,6 +408,15 @@ export default class LinkrPlugin extends Plugin {
     target: InsertionTarget,
     request: LinkRequest,
   ): void {
+    this.openLinkOptions(destination, target, request, false);
+  }
+
+  private openLinkOptions(
+    destination: DestinationChoice,
+    target: InsertionTarget,
+    request: LinkRequest,
+    allowNamedToggle: boolean,
+  ): void {
     const fileLink = this.app.metadataCache.fileToLinktext(
       destination.file,
       target.sourcePath,
@@ -253,8 +433,9 @@ export default class LinkrPlugin extends Plugin {
       target.suggestedAlias,
       fallbackAlias,
       this.settings.aliasFallback,
-      (alias, embed) => {
-        const finalRequest = { ...request, embed };
+      allowNamedToggle,
+      (alias, embed, named) => {
+        const finalRequest = { ...request, embed, named };
         this.insertLink(buildWikiLink(destinationText, finalRequest, alias), target);
       },
     ).open();

@@ -2,13 +2,15 @@
 
 Linkr is a fast, keyboard-friendly link builder for Obsidian. It creates wiki links to files, headings, and block IDs, with optional display text and one-click embeds.
 
-Version 2.0.2 requires Obsidian 1.13.0 or later.
+Version 2.0.3 requires Obsidian 1.13.0 or later.
 
 ## Features
 
 - Native-looking file, heading, block, and link-type pickers.
-- A universal link builder containing only the link types you enable.
+- A link builder containing only the link types you enable.
 - Direct commands for each enabled link type.
+- File Explorer context-menu actions for copying file and heading links.
+- Normal `Cmd/Ctrl+V` pasting, with an optional final link-options popup.
 - An **Embed content** toggle on every final link screen. Turn it on to change `[[...]]` into `![[...]]`.
 - Live preview before a link is inserted.
 - Configurable behavior when a display-text field is left blank.
@@ -33,19 +35,21 @@ Version 2.0.2 requires Obsidian 1.13.0 or later.
 | Heading link | `[[my_file#Heading]]` | `![[my_file#Heading]]` | Disabled |
 | Block link | `[[my_file#^block-id]]` | `![[my_file#^block-id]]` | Disabled |
 
-The two no-text subpath links are off by default to keep the command palette and universal picker focused. Enable either one under **Settings → Linkr → Link types**.
+The two no-text subpath links are off by default to keep the command palette and link builder focused. Enable either one under **Settings → Linkr → Link types**.
 
 ## Commands
 
 Obsidian automatically displays these commands with the `Linkr:` prefix:
 
-- **Open link builder…** — choose any enabled link type from one universal picker.
+- **Open link builder…** — choose any enabled link type from the Link builder.
 - **Insert wiki link** — create a file link without display text.
 - **Insert file link with text** — create a file link with optional display text.
 - **Insert heading link with text** — choose a file and heading, then enter display text.
 - **Insert block link with text** — choose a file and explicit block ID, then enter display text.
 - **Insert heading link** — create a heading link without display text when this type is enabled.
 - **Insert block link** — create a block link without display text when this type is enabled.
+- **Copy active file link** — copy a link to the active file.
+- **Copy heading link from active file…** — choose and copy a heading link from the active file.
 
 Disabled link types are unavailable until they are enabled in Linkr settings.
 
@@ -53,7 +57,7 @@ Disabled link types are unavailable until they are enabled in Linkr settings.
 
 Linkr does not force a default hotkey because Obsidian community plugins should let each user choose shortcuts and resolve conflicts.
 
-The recommended universal shortcut is:
+The recommended Link builder shortcut is:
 
 - macOS: `Command+Option+/`
 - Windows/Linux: `Ctrl+Alt+/`
@@ -79,6 +83,28 @@ To assign it:
 
 Press Escape, select **Cancel**, or use the close button at any stage to stop without inserting anything.
 
+## Copying links from the File Explorer
+
+1. Right-click a file in Obsidian's left File Explorer.
+2. Select **Copy file link**.
+3. For a Markdown note, you can instead select **Copy heading link…** and choose one of its headings.
+4. Open any Markdown note and press `Cmd+V` on macOS or `Ctrl+V` on Windows/Linux.
+
+The default **Ask when pasting** behavior opens Linkr's final popup at the cursor. You can:
+
+- Enter custom link text.
+- Turn **Use link text** on or off to add or omit `|text`.
+- Turn **Embed content** on or off to choose between `[[...]]` and `![[...]]`.
+- Review the exact result before inserting it.
+
+Under **Settings → Linkr → Copy and paste**, you can change the behavior to:
+
+- **Ask when pasting** — show the final Linkr popup.
+- **Paste without link text** — paste the copied wiki link exactly, without a pipe.
+- **Paste with the file name** — paste the link with `|file name` automatically.
+
+The copied value is also placed on the normal system clipboard, so it can be pasted outside Obsidian as Markdown. Linkr only opens its popup when the copied Linkr value is pasted into an Obsidian editor.
+
 ## Blank link text
 
 Under **Settings → Linkr → Link text**, choose what happens when a link-text field is blank. Text you type always takes priority.
@@ -97,17 +123,21 @@ For block links, **Target name** uses visible block text when available. For fil
 
 ### Link types
 
-Enable or disable the choices shown in the universal picker and their matching direct commands. Wiki link is enabled by default; heading and block links without display text are disabled by default.
+Enable or disable the choices shown in the link builder and their matching direct commands. Wiki link is enabled by default; heading and block links without display text are disabled by default.
 
 ### Link text
 
 Choose the fallback used when display text is blank.
 
-### Universal command
+### Link builder
 
 - View the recommended hotkey.
 - Choose which enabled type appears first.
 - Optionally move the last-used type to the top.
+
+### Copy and paste
+
+Choose whether copied File Explorer links ask for final options when pasted, paste without link text, or automatically use the file name as link text.
 
 ### File picker
 
@@ -159,13 +189,14 @@ Restart Obsidian or reload community plugins, then enable Linkr under **Settings
 
 ## Privacy and security
 
-Linkr works entirely inside Obsidian. It does not send network requests, collect analytics, use telemetry, show advertising, or transmit note contents. Its saved plugin data contains only Linkr settings and recently selected vault-relative file paths.
+Linkr works entirely inside Obsidian. It does not send network requests, collect analytics, use telemetry, show advertising, or transmit note contents. Its saved plugin data contains only Linkr settings and recently selected vault-relative file paths. A copied link target is kept only in memory while Obsidian is running and is not saved by Linkr.
 
 ## Known limitations
 
 - Block links require explicit Obsidian block IDs such as `^block-id`.
 - A newly created note cannot immediately be used for a heading or block link because it has no targets yet.
 - Shortcut availability depends on the user's Obsidian configuration and installed plugins.
+- The paste popup is available for the most recently copied Linkr file or heading link. Copying different clipboard content restores normal paste behavior.
 
 ## Development
 
@@ -177,6 +208,8 @@ npm run build
 ```
 
 The production build creates `main.js`. Keep `main.js` out of source commits and attach it to the GitHub release with `manifest.json` and `styles.css`.
+
+The local `node_modules` directory contains development tools and can be around 150 MB. It is ignored by Git and is not part of the plugin release. The installable Linkr files are only `main.js`, `manifest.json`, and `styles.css`.
 
 ## Support
 

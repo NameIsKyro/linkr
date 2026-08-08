@@ -1,9 +1,9 @@
 {
   "id": "linkr",
   "name": "Linkr",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "minAppVersion": "1.13.0",
-  "description": "Build file, heading, and block links with optional display text and embeds.",
+  "description": "Build and copy file, heading, and block links with optional text and embeds.",
   "author": "@NameIsKyro",
   "isDesktopOnly": false
 }

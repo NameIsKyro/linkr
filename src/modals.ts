@@ -297,7 +297,7 @@ export class BlockPickerModal extends FuzzySuggestModal<BlockChoice> {
   }
 }
 
-export class UniversalLinkPickerModal extends FuzzySuggestModal<LinkOption> {
+export class LinkBuilderModal extends FuzzySuggestModal<LinkOption> {
   constructor(
     app: App,
     private readonly options: LinkOption[],
@@ -314,7 +314,7 @@ export class UniversalLinkPickerModal extends FuzzySuggestModal<LinkOption> {
 
   async onOpen(): Promise<void> {
     await super.onOpen();
-    addPickerChrome(this, 'Build a wiki link', 'Linkr');
+    addPickerChrome(this, 'Link builder', 'Linkr');
   }
 
   getItems(): LinkOption[] {
@@ -344,6 +344,7 @@ export class LinkOptionsModal extends Modal {
   private input?: TextComponent;
   private previewEl?: HTMLElement;
   private embed: boolean;
+  private withText: boolean;
 
   constructor(
     app: App,
@@ -352,21 +353,31 @@ export class LinkOptionsModal extends Modal {
     private readonly initialAlias: string,
     private readonly fallbackAlias: string | null,
     private readonly fallbackMode: AliasFallbackMode,
-    private readonly onSubmit: (alias: string | null, embed: boolean) => void,
+    private readonly allowNamedToggle: boolean,
+    private readonly onSubmit: (
+      alias: string | null,
+      embed: boolean,
+      named: boolean,
+    ) => void,
   ) {
     super(app);
     this.embed = request.embed;
+    this.withText = request.named;
   }
 
   onOpen(): void {
     this.modalEl.addClass('linkr-modal', 'linkr-alias-modal');
     addBrandHeader(
       this.contentEl,
-      this.request.named ? 'Add link text' : 'Review wiki link',
+      this.allowNamedToggle
+        ? 'Link options'
+        : this.request.named
+          ? 'Add link text'
+          : 'Review wiki link',
       'Final step',
     );
 
-    if (this.request.named) {
+    if (this.request.named || this.allowNamedToggle) {
       const field = this.contentEl.createDiv({ cls: 'linkr-field' });
       const inputId = `linkr-alias-${Date.now()}`;
       field.createEl('label', { attr: { for: inputId }, text: 'Link text' });
@@ -390,6 +401,21 @@ export class LinkOptionsModal extends Modal {
     const preview = this.contentEl.createDiv({ cls: 'linkr-preview' });
     preview.createSpan({ cls: 'linkr-preview-label', text: 'Preview' });
     this.previewEl = preview.createEl('code');
+
+    if (this.allowNamedToggle) {
+      const linkTextSetting = new Setting(this.contentEl)
+        .setName('Use link text')
+        .setDesc('Add | and custom display text to the copied wiki link.')
+        .addToggle((toggle) => {
+          toggle.setValue(this.withText).onChange((value) => {
+            this.withText = value;
+            this.input?.setDisabled(!value);
+            this.updatePreview();
+          });
+        });
+      linkTextSetting.settingEl.addClass('linkr-link-text-setting');
+      this.input?.setDisabled(!this.withText);
+    }
 
     const embedSetting = new Setting(this.contentEl)
       .setName('Embed content')
@@ -415,7 +441,7 @@ export class LinkOptionsModal extends Modal {
     });
     addBrandFooter(this.contentEl);
     this.updatePreview();
-    if (this.input) {
+    if (this.input && this.withText) {
       window.setTimeout(() => this.input?.inputEl.focus(), 0);
     }
   }
@@ -425,7 +451,7 @@ export class LinkOptionsModal extends Modal {
   }
 
   private getResolvedAlias(): string | null {
-    if (!this.request.named) {
+    if (!this.withText) {
       return null;
     }
     const typed = this.input?.getValue().trim() ?? '';
@@ -450,7 +476,7 @@ export class LinkOptionsModal extends Modal {
     this.previewEl?.setText(
       buildWikiLink(
         this.destinationText,
-        { ...this.request, embed: this.embed },
+        { ...this.request, embed: this.embed, named: this.withText },
         this.getResolvedAlias(),
       ),
     );
@@ -459,7 +485,7 @@ export class LinkOptionsModal extends Modal {
   private submit(): void {
     const alias = this.getResolvedAlias();
     this.close();
-    this.onSubmit(alias, this.embed);
+    this.onSubmit(alias, this.embed, this.withText);
   }
 }
 
@@ -489,7 +515,7 @@ function addBrandHeader(
 function addBrandFooter(container: HTMLElement): void {
   container.createDiv({
     cls: 'linkr-footer',
-    text: `Linkr 2.0.2 · crafted by ${BRAND}`,
+    text: `Linkr 2.0.3 · crafted by ${BRAND}`,
   });
 }
 

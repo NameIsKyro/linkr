@@ -12,13 +12,15 @@ This checklist is for Linkr maintainers.
 6. Test every enabled link type in a temporary Obsidian vault.
 7. Test both states of **Embed content**.
 8. Test every blank-link-text setting.
-9. Test light and dark themes.
-10. Confirm the repository contains no private information, local paths, secrets, or template placeholders.
+9. Test **Copy file link** and **Copy heading link…** from the File Explorer.
+10. Test all three **Copy and paste** behaviors.
+11. Test light and dark themes.
+12. Confirm the repository contains no private information, local paths, secrets, or template placeholders.
 
 ## GitHub release
 
 1. Commit and push the source changes to `main`.
-2. Create a GitHub release tag that exactly matches the manifest version, such as `2.0.2`.
+2. Create a GitHub release tag that exactly matches the manifest version, such as `2.0.3`.
 3. Do not add a `v` before the version.
 4. Attach these separate files to the GitHub release:
    - `main.js`

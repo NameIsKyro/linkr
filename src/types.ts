@@ -1,6 +1,7 @@
 import type { Editor, EditorPosition, TFile } from 'obsidian';
 
 export type SubpathKind = 'file' | 'heading' | 'block';
+export type CopyPasteMode = 'ask' | 'plain' | 'file-name';
 export type AliasFallbackMode =
   | 'target'
   | 'file-target'
@@ -60,6 +61,7 @@ export interface DestinationChoice {
 
 export interface LinkrSettings {
   aliasFallback: AliasFallbackMode;
+  copyPasteMode: CopyPasteMode;
   enableWikiLink: boolean;
   enableFileLinkWithText: boolean;
   enableHeadingLink: boolean;
