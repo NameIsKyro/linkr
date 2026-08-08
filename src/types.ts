@@ -1,7 +1,20 @@
 import type { Editor, EditorPosition, TFile } from 'obsidian';
 
 export type SubpathKind = 'file' | 'heading' | 'block';
-export type AliasFallbackMode = 'destination' | 'file' | 'empty';
+export type AliasFallbackMode =
+  | 'target'
+  | 'file-target'
+  | 'file'
+  | 'link'
+  | 'none';
+
+export type LinkOptionSettingKey =
+  | 'enableWikiLink'
+  | 'enableFileLinkWithText'
+  | 'enableHeadingLink'
+  | 'enableHeadingLinkWithText'
+  | 'enableBlockLink'
+  | 'enableBlockLinkWithText';
 
 export interface LinkRequest {
   subpath: SubpathKind;
@@ -15,6 +28,7 @@ export interface LinkOption {
   description: string;
   example: string;
   icon: string;
+  settingKey: LinkOptionSettingKey;
   request: LinkRequest;
 }
 
@@ -46,6 +60,12 @@ export interface DestinationChoice {
 
 export interface LinkrSettings {
   aliasFallback: AliasFallbackMode;
+  enableWikiLink: boolean;
+  enableFileLinkWithText: boolean;
+  enableHeadingLink: boolean;
+  enableHeadingLinkWithText: boolean;
+  enableBlockLink: boolean;
+  enableBlockLinkWithText: boolean;
   recentFileLimit: number;
   recentFilePaths: string[];
   showFilePaths: boolean;
@@ -59,102 +79,81 @@ export interface LinkrSettings {
 export const LINK_OPTIONS: LinkOption[] = [
   {
     id: 'file-plain',
-    title: 'File link — plain',
-    description: 'Link to any note or attachment.',
+    title: 'Wiki link',
+    description: 'Link to a note or attachment without custom text.',
     example: '[[my_file]]',
-    icon: 'file-text',
+    icon: 'brackets',
+    settingKey: 'enableWikiLink',
     request: { subpath: 'file', embed: false, named: false },
   },
   {
     id: 'file-named',
-    title: 'File link — with name',
-    description: 'Link to a file with a custom display name.',
+    title: 'File link with text',
+    description: 'Link to a file using custom display text.',
     example: '[[my_file|photosynthesis]]',
     icon: 'text-cursor-input',
+    settingKey: 'enableFileLinkWithText',
     request: { subpath: 'file', embed: false, named: true },
   },
   {
-    id: 'heading-plain',
-    title: 'File heading link — plain',
-    description: 'Link directly to a heading in a Markdown note.',
-    example: '[[my_file#Heading]]',
-    icon: 'heading',
-    request: { subpath: 'heading', embed: false, named: false },
-  },
-  {
     id: 'heading-named',
-    title: 'File heading link — with name',
-    description: 'Link to a heading with a custom display name.',
+    title: 'Heading link with text',
+    description: 'Link to a heading using custom display text.',
     example: '[[my_file#Heading|photosynthesis]]',
     icon: 'heading-2',
+    settingKey: 'enableHeadingLinkWithText',
     request: { subpath: 'heading', embed: false, named: true },
   },
   {
-    id: 'block-plain',
-    title: 'File block link — plain',
-    description: 'Link directly to an explicit Obsidian block ID.',
-    example: '[[my_file#^block-id]]',
-    icon: 'pilcrow',
-    request: { subpath: 'block', embed: false, named: false },
-  },
-  {
     id: 'block-named',
-    title: 'File block link — with name',
-    description: 'Link to a block with a custom display name.',
+    title: 'Block link with text',
+    description: 'Link to a block ID using custom display text.',
     example: '[[my_file#^block-id|important idea]]',
     icon: 'text-select',
+    settingKey: 'enableBlockLinkWithText',
     request: { subpath: 'block', embed: false, named: true },
   },
   {
-    id: 'embed-file-plain',
-    title: 'Embed file — plain',
-    description: 'Embed a note, image, PDF, audio file, or other attachment.',
-    example: '![[my_file]]',
-    icon: 'panel-top-open',
-    request: { subpath: 'file', embed: true, named: false },
+    id: 'heading-plain',
+    title: 'Heading link',
+    description: 'Link directly to a heading without display text.',
+    example: '[[my_file#Heading]]',
+    icon: 'heading',
+    settingKey: 'enableHeadingLink',
+    request: { subpath: 'heading', embed: false, named: false },
   },
   {
-    id: 'embed-file-named',
-    title: 'Embed file — with name',
-    description: 'Embed a file and include a name after the pipe.',
-    example: '![[my_file|photosynthesis]]',
-    icon: 'panel-top',
-    request: { subpath: 'file', embed: true, named: true },
-  },
-  {
-    id: 'embed-heading-plain',
-    title: 'Embed heading — plain',
-    description: 'Embed one section from a Markdown note.',
-    example: '![[my_file#Heading]]',
-    icon: 'between-horizontal-start',
-    request: { subpath: 'heading', embed: true, named: false },
-  },
-  {
-    id: 'embed-heading-named',
-    title: 'Embed heading — with name',
-    description: 'Embed a section and include a name after the pipe.',
-    example: '![[my_file#Heading|photosynthesis]]',
-    icon: 'between-horizontal-end',
-    request: { subpath: 'heading', embed: true, named: true },
-  },
-  {
-    id: 'embed-block-plain',
-    title: 'Embed block — plain',
-    description: 'Embed one block from a Markdown note.',
-    example: '![[my_file#^block-id]]',
-    icon: 'square-dashed',
-    request: { subpath: 'block', embed: true, named: false },
-  },
-  {
-    id: 'embed-block-named',
-    title: 'Embed block — with name',
-    description: 'Embed a block and include a name after the pipe.',
-    example: '![[my_file#^block-id|important idea]]',
-    icon: 'scan-text',
-    request: { subpath: 'block', embed: true, named: true },
+    id: 'block-plain',
+    title: 'Block link',
+    description: 'Link directly to a block ID without display text.',
+    example: '[[my_file#^block-id]]',
+    icon: 'pilcrow',
+    settingKey: 'enableBlockLink',
+    request: { subpath: 'block', embed: false, named: false },
   },
 ];
 
+const LEGACY_OPTION_IDS: Record<string, string> = {
+  'embed-file-plain': 'file-plain',
+  'embed-file-named': 'file-named',
+  'embed-heading-plain': 'heading-plain',
+  'embed-heading-named': 'heading-named',
+  'embed-block-plain': 'block-plain',
+  'embed-block-named': 'block-named',
+};
+
+export function normalizeLinkOptionId(id: string): string {
+  return LEGACY_OPTION_IDS[id] ?? id;
+}
+
 export function getLinkOption(id: string): LinkOption {
-  return LINK_OPTIONS.find((option) => option.id === id) ?? LINK_OPTIONS[0]!;
+  const normalizedId = normalizeLinkOptionId(id);
+  return LINK_OPTIONS.find((option) => option.id === normalizedId) ?? LINK_OPTIONS[0]!;
+}
+
+export function isLinkOptionEnabled(
+  option: LinkOption,
+  settings: LinkrSettings,
+): boolean {
+  return settings[option.settingKey];
 }

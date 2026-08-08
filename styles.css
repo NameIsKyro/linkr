@@ -1,4 +1,4 @@
-/* Linkr Gen 2 — created by @NameIsKyro */
+/* Linkr — crafted by @NameIsKyro */
 
 .linkr-modal {
   --linkr-accent: var(--interactive-accent);
@@ -117,7 +117,26 @@
   display: flex;
   align-items: center;
   gap: 11px;
-  padding-left: calc(var(--linkr-heading-depth, 0) * 9px);
+}
+
+.linkr-heading-depth-1 {
+  padding-left: 9px;
+}
+
+.linkr-heading-depth-2 {
+  padding-left: 18px;
+}
+
+.linkr-heading-depth-3 {
+  padding-left: 27px;
+}
+
+.linkr-heading-depth-4 {
+  padding-left: 36px;
+}
+
+.linkr-heading-depth-5 {
+  padding-left: 45px;
 }
 
 .linkr-suggestion-icon {
@@ -277,6 +296,18 @@
   color: var(--text-accent);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.linkr-embed-setting {
+  margin: 0 20px 16px;
+  padding: 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  background: var(--background-primary-alt);
+}
+
+.linkr-embed-setting .setting-item-info {
+  padding-right: 16px;
 }
 
 .linkr-actions {

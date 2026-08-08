@@ -1,7 +1,7 @@
 {
   "name": "obsidian-linkr",
-  "version": "2.0.1",
-  "description": "Linkr — universal Obsidian wiki links by @NameIsKyro.",
+  "version": "2.0.2",
+  "description": "Linkr builds flexible wiki links for files, headings, and blocks in Obsidian.",
   "main": "main.js",
   "type": "module",
   "scripts": {

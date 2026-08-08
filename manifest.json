@@ -1,9 +1,9 @@
 {
   "id": "linkr",
   "name": "Linkr",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "minAppVersion": "1.13.0",
-  "description": "A fast, universal wiki-link workflow for files, headings, blocks, and embeds.",
+  "description": "Build file, heading, and block links with optional display text and embeds.",
   "author": "@NameIsKyro",
   "isDesktopOnly": false
 }

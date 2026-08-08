@@ -8,7 +8,13 @@ import type { LinkrSettings } from './types';
 import { LINK_OPTIONS } from './types';
 
 export const DEFAULT_SETTINGS: LinkrSettings = {
-  aliasFallback: 'destination',
+  aliasFallback: 'target',
+  enableWikiLink: true,
+  enableFileLinkWithText: true,
+  enableHeadingLink: false,
+  enableHeadingLinkWithText: true,
+  enableBlockLink: false,
+  enableBlockLinkWithText: true,
   recentFileLimit: 5,
   recentFilePaths: [],
   showFilePaths: true,
@@ -33,32 +39,48 @@ export class LinkrSettingTab extends PluginSettingTab {
     return [
       {
         type: 'group',
-        heading: 'Linkr Gen 2',
+        heading: 'Linkr',
         cls: 'linkr-settings-hero',
         items: [
           {
-            name: 'Universal wiki-link workflows',
-            desc: 'Created by @NameIsKyro.',
+            name: 'Fast wiki-link workflows',
+            desc: 'Build file, heading, and block links with optional display text and embeds.',
             searchable: false,
           },
         ],
       },
       {
         type: 'group',
-        heading: 'Named links',
+        heading: 'Link types',
+        items: LINK_OPTIONS.map((option) => ({
+          name: option.title,
+          desc: `${option.description} Example: ${option.example}`,
+          aliases: ['link type', 'command', 'universal picker'],
+          control: {
+            type: 'toggle',
+            key: option.settingKey,
+            defaultValue: DEFAULT_SETTINGS[option.settingKey],
+          },
+        })),
+      },
+      {
+        type: 'group',
+        heading: 'Link text',
         items: [
           {
-            name: 'Blank name fallback',
-            desc: 'What Linkr inserts after the pipe when the name field is blank.',
-            aliases: ['alias', 'display name', 'pipe'],
+            name: 'When link text is blank',
+            desc: 'Choose what Linkr uses after | when you leave the link-text field blank. Typed text always wins.',
+            aliases: ['alias', 'display text', 'pipe', 'blank text'],
             control: {
               type: 'dropdown',
               key: 'aliasFallback',
               defaultValue: DEFAULT_SETTINGS.aliasFallback,
               options: {
-                destination: 'Heading, block text, or file name',
-                file: 'File name',
-                empty: 'Keep the alias empty',
+                target: 'Target name — heading1',
+                'file-target': 'File > target — file > heading1',
+                file: 'File name — file',
+                link: 'Generic text — link',
+                none: 'No link text — omit |',
               },
             },
           },
@@ -69,8 +91,13 @@ export class LinkrSettingTab extends PluginSettingTab {
         heading: 'Universal command',
         items: [
           {
+            name: 'Recommended hotkey',
+            desc: 'Assign Command+Option+/ on macOS or Ctrl+Alt+/ on Windows/Linux in Settings → Hotkeys. Linkr leaves it unassigned to avoid conflicts.',
+            searchable: false,
+          },
+          {
             name: 'Preferred link type',
-            desc: 'This option appears first in the universal link picker.',
+            desc: 'This enabled option appears first in the link builder.',
             aliases: ['default link type', 'universal picker'],
             control: {
               type: 'dropdown',
@@ -82,8 +109,8 @@ export class LinkrSettingTab extends PluginSettingTab {
             },
           },
           {
-            name: 'Remember last universal choice',
-            desc: 'Move the most recently used universal link type to the top.',
+            name: 'Remember last choice',
+            desc: 'Move the most recently used link type to the top of the link builder.',
             aliases: ['recent link type'],
             control: {
               type: 'toggle',
@@ -99,7 +126,7 @@ export class LinkrSettingTab extends PluginSettingTab {
         items: [
           {
             name: 'Recent files at the top',
-            desc: 'Choose how many most-recently selected files are boosted. Set to 0 to disable.',
+            desc: 'Choose how many recently selected files are boosted. Set to 0 to disable.',
             aliases: ['recent files', 'MRU'],
             control: {
               type: 'slider',
@@ -163,7 +190,7 @@ export class LinkrSettingTab extends PluginSettingTab {
         cls: 'linkr-settings-footer',
         items: [
           {
-            name: 'Linkr 2.0.1',
+            name: 'Linkr 2.0.2',
             desc: 'Crafted by @NameIsKyro.',
             searchable: false,
           },

@@ -22,29 +22,38 @@ export function buildDestinationText(
 export function getFallbackAlias(
   destination: DestinationChoice,
   mode: AliasFallbackMode,
-): string {
-  if (mode === 'empty') {
-    return '';
+): string | null {
+  if (mode === 'none') {
+    return null;
   }
 
   if (mode === 'file') {
     return destination.file.basename;
   }
 
-  return (
+  if (mode === 'link') {
+    return 'link';
+  }
+
+  const target =
     destination.heading?.heading ??
     destination.block?.label ??
-    destination.file.basename
-  );
+    destination.file.basename;
+
+  if (mode === 'file-target' && target !== destination.file.basename) {
+    return `${destination.file.basename} > ${target}`;
+  }
+
+  return target;
 }
 
 export function buildWikiLink(
   destinationText: string,
   request: LinkRequest,
-  alias: string,
+  alias: string | null,
 ): string {
   const prefix = request.embed ? '!' : '';
-  const aliasPart = request.named ? `|${escapeAlias(alias)}` : '';
+  const aliasPart = request.named && alias !== null ? `|${escapeAlias(alias)}` : '';
   return `${prefix}[[${destinationText}${aliasPart}]]`;
 }
 

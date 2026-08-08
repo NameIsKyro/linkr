@@ -7,6 +7,7 @@ import {
   prepareFuzzySearch,
   SearchResult,
   setIcon,
+  Setting,
   sortSearchResults,
   SuggestModal,
   TFile,
@@ -232,10 +233,7 @@ export class HeadingPickerModal extends FuzzySuggestModal<HeadingChoice> {
 
   renderSuggestion(match: FuzzyMatch<HeadingChoice>, el: HTMLElement): void {
     const row = el.createDiv({ cls: 'linkr-suggestion' });
-    row.style.setProperty(
-      '--linkr-heading-depth',
-      String(Math.max(0, match.item.level - 1)),
-    );
+    row.addClass(`linkr-heading-depth-${Math.max(0, match.item.level - 1)}`);
     row.createSpan({
       cls: 'linkr-heading-level',
       text: `H${match.item.level}`,
@@ -308,7 +306,7 @@ export class UniversalLinkPickerModal extends FuzzySuggestModal<LinkOption> {
     super(app);
     this.setPlaceholder('What kind of wiki link do you want to add?');
     this.setInstructions([
-      { command: 'type', purpose: 'filter by file, heading, block, or embed' },
+      { command: 'type', purpose: 'filter by file, heading, or block' },
       { command: '↵', purpose: 'choose' },
       { command: 'esc', purpose: 'cancel' },
     ]);
@@ -316,7 +314,7 @@ export class UniversalLinkPickerModal extends FuzzySuggestModal<LinkOption> {
 
   async onOpen(): Promise<void> {
     await super.onOpen();
-    addPickerChrome(this, 'Add universal wiki link', 'Linkr Gen 2');
+    addPickerChrome(this, 'Build a wiki link', 'Linkr');
   }
 
   getItems(): LinkOption[] {
@@ -342,53 +340,72 @@ export class UniversalLinkPickerModal extends FuzzySuggestModal<LinkOption> {
   }
 }
 
-export class AliasModal extends Modal {
+export class LinkOptionsModal extends Modal {
   private input?: TextComponent;
   private previewEl?: HTMLElement;
+  private embed: boolean;
 
   constructor(
     app: App,
     private readonly destinationText: string,
     private readonly request: LinkRequest,
     private readonly initialAlias: string,
-    private readonly fallbackAlias: string,
+    private readonly fallbackAlias: string | null,
     private readonly fallbackMode: AliasFallbackMode,
-    private readonly onSubmit: (alias: string) => void,
+    private readonly onSubmit: (alias: string | null, embed: boolean) => void,
   ) {
     super(app);
+    this.embed = request.embed;
   }
 
   onOpen(): void {
     this.modalEl.addClass('linkr-modal', 'linkr-alias-modal');
-    addBrandHeader(this.contentEl, 'Name this wiki link', 'Final step');
+    addBrandHeader(
+      this.contentEl,
+      this.request.named ? 'Add link text' : 'Review wiki link',
+      'Final step',
+    );
 
-    const field = this.contentEl.createDiv({ cls: 'linkr-field' });
-    const inputId = `linkr-alias-${Date.now()}`;
-    field.createEl('label', { attr: { for: inputId }, text: 'Link name' });
-    this.input = new TextComponent(field)
-      .setPlaceholder(this.getPlaceholder())
-      .setValue(this.initialAlias)
-      .onChange(() => this.updatePreview());
-    this.input.inputEl.id = inputId;
-    this.input.inputEl.addClass('linkr-alias-input');
-    this.input.inputEl.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter' && !event.isComposing) {
-        event.preventDefault();
-        this.submit();
-      }
-    });
+    if (this.request.named) {
+      const field = this.contentEl.createDiv({ cls: 'linkr-field' });
+      const inputId = `linkr-alias-${Date.now()}`;
+      field.createEl('label', { attr: { for: inputId }, text: 'Link text' });
+      this.input = new TextComponent(field)
+        .setPlaceholder(this.getPlaceholder())
+        .setValue(this.initialAlias)
+        .onChange(() => this.updatePreview());
+      this.input.inputEl.id = inputId;
+      this.input.inputEl.addClass('linkr-alias-input');
+      this.input.inputEl.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' && !event.isComposing) {
+          event.preventDefault();
+          this.submit();
+        }
+      });
 
-    const hint = field.createDiv({ cls: 'linkr-field-hint' });
-    hint.setText(this.getBlankHint());
+      const hint = field.createDiv({ cls: 'linkr-field-hint' });
+      hint.setText(this.getBlankHint());
+    }
 
     const preview = this.contentEl.createDiv({ cls: 'linkr-preview' });
     preview.createSpan({ cls: 'linkr-preview-label', text: 'Preview' });
     this.previewEl = preview.createEl('code');
 
+    const embedSetting = new Setting(this.contentEl)
+      .setName('Embed content')
+      .setDesc('Show the linked content inside this note by adding an exclamation mark before the wiki link.')
+      .addToggle((toggle) => {
+        toggle.setValue(this.embed).onChange((value) => {
+          this.embed = value;
+          this.updatePreview();
+        });
+      });
+    embedSetting.settingEl.addClass('linkr-embed-setting');
+
     const actions = this.contentEl.createDiv({ cls: 'linkr-actions' });
     new ButtonComponent(actions).setButtonText('Cancel').onClick(() => this.close());
     new ButtonComponent(actions)
-      .setButtonText('Insert wiki link')
+      .setButtonText('Insert link')
       .setCta()
       .onClick(() => this.submit());
 
@@ -398,28 +415,33 @@ export class AliasModal extends Modal {
     });
     addBrandFooter(this.contentEl);
     this.updatePreview();
-    window.setTimeout(() => this.input?.inputEl.focus(), 0);
+    if (this.input) {
+      window.setTimeout(() => this.input?.inputEl.focus(), 0);
+    }
   }
 
   onClose(): void {
     this.contentEl.empty();
   }
 
-  private getResolvedAlias(): string {
+  private getResolvedAlias(): string | null {
+    if (!this.request.named) {
+      return null;
+    }
     const typed = this.input?.getValue().trim() ?? '';
     return typed || this.fallbackAlias;
   }
 
   private getPlaceholder(): string {
-    if (this.fallbackMode === 'empty') {
-      return 'Optional display name';
+    if (this.fallbackMode === 'none' || this.fallbackAlias === null) {
+      return 'Optional link text';
     }
     return `Leave blank for “${this.fallbackAlias}”`;
   }
 
   private getBlankHint(): string {
-    if (this.fallbackMode === 'empty') {
-      return 'Blank input keeps an empty alias after the pipe.';
+    if (this.fallbackMode === 'none' || this.fallbackAlias === null) {
+      return 'Blank input inserts the link without | or display text.';
     }
     return `Blank input automatically uses “${this.fallbackAlias}”.`;
   }
@@ -428,7 +450,7 @@ export class AliasModal extends Modal {
     this.previewEl?.setText(
       buildWikiLink(
         this.destinationText,
-        this.request,
+        { ...this.request, embed: this.embed },
         this.getResolvedAlias(),
       ),
     );
@@ -437,7 +459,7 @@ export class AliasModal extends Modal {
   private submit(): void {
     const alias = this.getResolvedAlias();
     this.close();
-    this.onSubmit(alias);
+    this.onSubmit(alias, this.embed);
   }
 }
 
@@ -467,7 +489,7 @@ function addBrandHeader(
 function addBrandFooter(container: HTMLElement): void {
   container.createDiv({
     cls: 'linkr-footer',
-    text: `Linkr Gen 2 · crafted by ${BRAND}`,
+    text: `Linkr 2.0.2 · crafted by ${BRAND}`,
   });
 }
 

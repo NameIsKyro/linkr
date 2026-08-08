@@ -15,11 +15,11 @@ import {
   sanitizeNewNoteName,
 } from './link-format';
 import {
-  AliasModal,
   BlockPickerModal,
   FilePickerChoice,
   FilePickerModal,
   HeadingPickerModal,
+  LinkOptionsModal,
   UniversalLinkPickerModal,
 } from './modals';
 import {
@@ -35,7 +35,12 @@ import type {
   LinkRequest,
   LinkrSettings,
 } from './types';
-import { getLinkOption, LINK_OPTIONS } from './types';
+import {
+  getLinkOption,
+  isLinkOptionEnabled,
+  LINK_OPTIONS,
+  normalizeLinkOptionId,
+} from './types';
 
 interface DirectCommand {
   id: string;
@@ -46,21 +51,34 @@ interface DirectCommand {
 const DIRECT_COMMANDS: DirectCommand[] = [
   {
     id: 'insert-normal-wiki-link',
-    name: 'Insert normal wiki link',
+    name: 'Insert wiki link',
     optionId: 'file-plain',
   },
-  { id: 'insert-file-link-plain', name: 'File link — plain', optionId: 'file-plain' },
-  { id: 'insert-file-link-with-name', name: 'File link — with name', optionId: 'file-named' },
-  { id: 'insert-heading-link-plain', name: 'File heading link — plain', optionId: 'heading-plain' },
-  { id: 'insert-heading-link-with-name', name: 'File heading link — with name', optionId: 'heading-named' },
-  { id: 'insert-block-link-plain', name: 'File block link — plain', optionId: 'block-plain' },
-  { id: 'insert-block-link-with-name', name: 'File block link — with name', optionId: 'block-named' },
-  { id: 'insert-file-embed-plain', name: 'Embed file — plain', optionId: 'embed-file-plain' },
-  { id: 'insert-file-embed-with-name', name: 'Embed file — with name', optionId: 'embed-file-named' },
-  { id: 'insert-heading-embed-plain', name: 'Embed heading — plain', optionId: 'embed-heading-plain' },
-  { id: 'insert-heading-embed-with-name', name: 'Embed heading — with name', optionId: 'embed-heading-named' },
-  { id: 'insert-block-embed-plain', name: 'Embed block — plain', optionId: 'embed-block-plain' },
-  { id: 'insert-block-embed-with-name', name: 'Embed block — with name', optionId: 'embed-block-named' },
+  {
+    id: 'insert-file-link-with-name',
+    name: 'Insert file link with text',
+    optionId: 'file-named',
+  },
+  {
+    id: 'insert-heading-link-with-name',
+    name: 'Insert heading link with text',
+    optionId: 'heading-named',
+  },
+  {
+    id: 'insert-block-link-with-name',
+    name: 'Insert block link with text',
+    optionId: 'block-named',
+  },
+  {
+    id: 'insert-heading-link-plain',
+    name: 'Insert heading link',
+    optionId: 'heading-plain',
+  },
+  {
+    id: 'insert-block-link-plain',
+    name: 'Insert block link',
+    optionId: 'block-plain',
+  },
 ];
 
 export default class LinkrPlugin extends Plugin {
@@ -75,15 +93,20 @@ export default class LinkrPlugin extends Plugin {
 
     this.addCommand({
       id: 'add-universal-wiki-link',
-      name: 'Add universal wiki link…',
+      name: 'Open link builder…',
       editorCallback: (
         editor: Editor,
         context: MarkdownView | MarkdownFileInfo,
       ) => {
+        const options = this.getOrderedUniversalOptions();
+        if (options.length === 0) {
+          new Notice('No link types are enabled. Turn one on in the plugin settings.');
+          return;
+        }
         const target = this.captureTarget(editor, context.file?.path ?? '');
         new UniversalLinkPickerModal(
           this.app,
-          this.getOrderedUniversalOptions(),
+          options,
           (option) => {
             void this.rememberUniversalOption(option);
             this.startLinkFlow(target, option.request);
@@ -102,21 +125,42 @@ export default class LinkrPlugin extends Plugin {
   private async loadSettings(): Promise<void> {
     const saved = (await this.loadData()) as Partial<LinkrSettings> | null;
     this.settings = Object.assign({}, DEFAULT_SETTINGS, saved ?? {});
+    const legacyFallback = (saved as { aliasFallback?: string } | null)?.aliasFallback;
+    if (legacyFallback === 'destination') {
+      this.settings.aliasFallback = 'target';
+    } else if (legacyFallback === 'empty') {
+      this.settings.aliasFallback = 'none';
+    }
+    this.settings.preferredUniversalOption = normalizeLinkOptionId(
+      this.settings.preferredUniversalOption,
+    );
+    this.settings.lastUniversalOption = normalizeLinkOptionId(
+      this.settings.lastUniversalOption,
+    );
     this.settings.recentFilePaths = Array.isArray(this.settings.recentFilePaths)
       ? this.settings.recentFilePaths.filter((path): path is string => typeof path === 'string')
       : [];
   }
 
   private registerDirectCommand(command: DirectCommand): void {
+    const option = getLinkOption(command.optionId);
     this.addCommand({
       id: command.id,
       name: command.name,
-      editorCallback: (
+      editorCheckCallback: (
+        checking: boolean,
         editor: Editor,
         context: MarkdownView | MarkdownFileInfo,
       ) => {
+        if (!isLinkOptionEnabled(option, this.settings)) {
+          return false;
+        }
+        if (checking) {
+          return true;
+        }
         const target = this.captureTarget(editor, context.file?.path ?? '');
-        this.startLinkFlow(target, getLinkOption(command.optionId).request);
+        this.startLinkFlow(target, option.request);
+        return true;
       },
     });
   }
@@ -199,25 +243,19 @@ export default class LinkrPlugin extends Plugin {
       true,
     );
     const destinationText = buildDestinationText(fileLink, destination);
-
-    if (!request.named) {
-      this.insertLink(buildWikiLink(destinationText, request, ''), target);
-      return;
-    }
-
-    const fallbackAlias = getFallbackAlias(
-      destination,
-      this.settings.aliasFallback,
-    );
-    new AliasModal(
+    const fallbackAlias = request.named
+      ? getFallbackAlias(destination, this.settings.aliasFallback)
+      : null;
+    new LinkOptionsModal(
       this.app,
       destinationText,
       request,
       target.suggestedAlias,
       fallbackAlias,
       this.settings.aliasFallback,
-      (alias) => {
-        this.insertLink(buildWikiLink(destinationText, request, alias), target);
+      (alias, embed) => {
+        const finalRequest = { ...request, embed };
+        this.insertLink(buildWikiLink(destinationText, finalRequest, alias), target);
       },
     ).open();
   }
@@ -317,7 +355,9 @@ export default class LinkrPlugin extends Plugin {
       this.settings.lastUniversalOption
         ? this.settings.lastUniversalOption
         : this.settings.preferredUniversalOption;
-    return [...LINK_OPTIONS].sort((a, b) => {
+    return LINK_OPTIONS.filter((option) =>
+      isLinkOptionEnabled(option, this.settings),
+    ).sort((a, b) => {
       if (a.id === preferred) return -1;
       if (b.id === preferred) return 1;
       return 0;
